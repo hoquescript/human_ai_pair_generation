@@ -6,8 +6,7 @@
 #SBATCH --time=12:00:00
 #SBATCH --cpus-per-task=12
 #SBATCH --mem=128G
-#SBATCH --output=%x-%A_%a.out
-#SBATCH --error=%x-%A_%a.err
+#SBATCH --output=logs/%x-%A_%a.log
 
 set -euo pipefail
 
