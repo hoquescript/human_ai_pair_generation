@@ -89,6 +89,9 @@ if __name__ == "__main__":
     dataframe = dataframe[dataframe["code"].str.len() < 20000]
     human_df = dataframe[dataframe["label"] == 1]
 
+    print(
+        f"Generating contrastive pairs for {language}... in mode {environment} by model {model_name}"
+    )
     processor, model = get_model(model_name)
 
     for index, row in human_df.iterrows():

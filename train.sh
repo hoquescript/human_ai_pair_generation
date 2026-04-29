@@ -3,7 +3,7 @@
 #SBATCH --partition=gpubase_bygpu_b5
 #SBATCH --gpus=h100:1
 #SBATCH --array=0-2
-#SBATCH --time=10:00:00
+#SBATCH --time=12:00:00
 #SBATCH --cpus-per-task=12
 #SBATCH --mem=128G
 #SBATCH --output=%x-%A_%a.out
@@ -46,7 +46,7 @@ fi
 
 export LANGUAGE="${LANGUAGE:-${LANGUAGE_NAMES[$TASK_ID]}}"
 export ENVIRONMENT="${ENVIRONMENT:-prod}"
-export MODEL_NAME="google/gemma-4-31B-it"
+export MODEL_NAME="google/gemma-4-26B-A4B-it"
 
 DATA_CSV="$ROOT_DIR/data/aidev/${LANGUAGE}.csv"
 
