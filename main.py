@@ -1,6 +1,5 @@
 import pandas as pd
-from langchain_huggingface import ChatHuggingFace, HuggingFacePipeline
-from langchain.messages import SystemMessage, HumanMessage
+from transformers import AutoModelForCausalLM, AutoProcessor
 
 import os
 
@@ -18,26 +17,24 @@ def clean_code_output(text):
 
 
 def get_model(model_name: str):
-    llm = HuggingFacePipeline.from_model_id(
-        model_id=model_name,
-        task="text-generation",
-        pipeline_kwargs=dict(
-            do_sample=False,
-            repetition_penalty=1.0,
-            max_new_tokens=2048,
-            return_full_text=False,
-        ),
+    processor = AutoProcessor.from_pretrained(model_name)
+    model = AutoModelForCausalLM.from_pretrained(
+        model_name,
+        dtype="auto",
+        device_map="auto",
     )
-    model = ChatHuggingFace(llm=llm, stop=["```"])
-    return model
+    return processor, model
 
 
 def get_prompt(code: str) -> list[dict[str, str]]:
     return [
-        SystemMessage(
-            "You are a code generator. You are given a piece of code written by a human. Your task is to produce an alternative version of this code. You must output only raw code. Never include markdown, backticks, or explanations. "
-        ),
-        HumanMessage(f"""You are given a piece of code written by a human. Your task is to produce an alternative version of this code.
+        {
+            "role": "system",
+            "content": "You are a code generator. You are given a piece of code written by a human. Your task is to produce an alternative version of this code. You must output only raw code. Never include markdown, backticks, or explanations.",
+        },
+        {
+            "role": "user",
+            "content": f"""You are given a piece of code written by a human. Your task is to produce an alternative version of this code.
             Guidelines:
             - Use the same programming language.
             - Preserve the original functionality and behavior exactly.
@@ -55,14 +52,30 @@ def get_prompt(code: str) -> list[dict[str, str]]:
 
             Original code:
             {code}
-        """),
+        """,
+        },
     ]
 
 
-def generate_ai_pair(model: ChatHuggingFace, messages: list[dict[str, str]]) -> str:
-    response = model.invoke(messages)
+def generate_ai_pair(processor, model, messages: list[dict[str, str]]) -> str:
+    text = processor.apply_chat_template(
+        messages,
+        tokenize=False,
+        add_generation_prompt=True,
+        enable_thinking=False,
+    )
+    inputs = processor(text=text, return_tensors="pt").to(model.device)
+    input_len = inputs["input_ids"].shape[-1]
 
-    return clean_code_output(response.content)
+    outputs = model.generate(
+        **inputs,
+        max_new_tokens=2048,
+        do_sample=False,
+        repetition_penalty=1.0,
+    )
+    response = processor.decode(outputs[0][input_len:], skip_special_tokens=True)
+
+    return clean_code_output(response)
 
 
 if __name__ == "__main__":
@@ -76,12 +89,12 @@ if __name__ == "__main__":
     dataframe = dataframe[dataframe["code"].str.len() < 20000]
     human_df = dataframe[dataframe["label"] == 1]
 
-    model = get_model(model_name)
+    processor, model = get_model(model_name)
 
     for index, row in human_df.iterrows():
         code_human = row["code"]
         prompt = get_prompt(code_human)
-        code_ai = generate_ai_pair(model, prompt)
+        code_ai = generate_ai_pair(processor, model, prompt)
         human_df.loc[index, "contrast"] = code_ai
 
     if not os.path.exists("data/contrastive-aidev/java_paired.jsonl"):

@@ -30,8 +30,7 @@ source "$SLURM_TMPDIR/ENV/bin/activate"
 # Install dependencies
 python -m pip install --no-index --upgrade pip
 python -m pip install --no-index --no-cache-dir \
-  langchain \
-  langchain-huggingface \
+  accelerate \
   pandas \
   torch \
   transformers
