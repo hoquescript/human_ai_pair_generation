@@ -84,8 +84,11 @@ if __name__ == "__main__":
         code_ai = generate_ai_pair(model, prompt)
         human_df.loc[index, "contrast"] = code_ai
 
+    if not os.path.exists("data/contrastive-aidev/java_paired.jsonl"):
+        os.makedirs("data/contrastive-aidev", exist_ok=True)
+
     human_df.to_json(
-        "data/contrastive-aidev/java_paired.jsonl",
+        f"data/contrastive-aidev/{language}_paired.jsonl",
         orient="records",
         lines=True,
         mode="w",
