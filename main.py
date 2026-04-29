@@ -1,20 +1,8 @@
 import pandas as pd
 from langchain_huggingface import ChatHuggingFace, HuggingFacePipeline
-from langchain.messages import SystemMessage, HumanMessage, AIMessage
+from langchain.messages import SystemMessage, HumanMessage
 
-
-model_name = "Qwen/Qwen2.5-Coder-0.5B-Instruct"
-llm = HuggingFacePipeline.from_model_id(
-    model_id=model_name,
-    task="text-generation",
-    pipeline_kwargs=dict(
-        do_sample=False,
-        repetition_penalty=1.0,
-        max_new_tokens=2048,
-        return_full_text=False,
-    ),
-)
-model = ChatHuggingFace(llm=llm, stop=["```"])
+import os
 
 
 def clean_code_output(text):
@@ -27,6 +15,21 @@ def clean_code_output(text):
             lines = lines[:-1]
         return "\n".join(lines).strip()
     return text
+
+
+def get_model(model_name: str):
+    llm = HuggingFacePipeline.from_model_id(
+        model_id=model_name,
+        task="text-generation",
+        pipeline_kwargs=dict(
+            do_sample=False,
+            repetition_penalty=1.0,
+            max_new_tokens=2048,
+            return_full_text=False,
+        ),
+    )
+    model = ChatHuggingFace(llm=llm, stop=["```"])
+    return model
 
 
 def get_prompt(code: str) -> list[dict[str, str]]:
@@ -56,22 +59,31 @@ def get_prompt(code: str) -> list[dict[str, str]]:
     ]
 
 
-def generate_ai_pair(messages: list[dict[str, str]]) -> str:
+def generate_ai_pair(model: ChatHuggingFace, messages: list[dict[str, str]]) -> str:
     response = model.invoke(messages)
 
     return clean_code_output(response.content)
 
 
 if __name__ == "__main__":
-    df = pd.read_csv("data/aidev/java.csv")
+    environment = os.environ.get("ENVIRONMENT", "dev")
+    language = os.environ.get("LANGUAGE", "java")
+    model_name = os.environ.get("MODEL_NAME", "Qwen/Qwen2.5-Coder-0.5B-Instruct")
+
+    df = pd.read_csv(f"data/aidev/{language}.csv")
     sample_df = df.sample(n=5)
-    sample_df = sample_df[sample_df["code"].str.len() < 20000]
-    human_df = sample_df[sample_df["label"] == 1]
+    dataframe = sample_df if environment == "dev" else df
+    dataframe = dataframe[dataframe["code"].str.len() < 20000]
+    human_df = dataframe[dataframe["label"] == 1]
+
+    model = get_model(model_name)
+
     for index, row in human_df.iterrows():
         code_human = row["code"]
         prompt = get_prompt(code_human)
-        code_ai = generate_ai_pair(prompt)
+        code_ai = generate_ai_pair(model, prompt)
         human_df.loc[index, "contrast"] = code_ai
+
     human_df.to_json(
         "data/contrastive-aidev/java_paired.jsonl",
         orient="records",
