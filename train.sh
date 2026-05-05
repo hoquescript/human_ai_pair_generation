@@ -40,7 +40,6 @@ python -m pip install --no-index --no-cache-dir \
   pillow \
   torch \
   torchvision \
-  torchcodec \
   librosa \
   transformers
 
