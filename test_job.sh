@@ -24,6 +24,8 @@ source "$SLURM_TMPDIR/ENV/bin/activate"
 python -m pip install --no-index --upgrade pip
 python -m pip install --no-index --no-cache-dir \
   accelerate \
+  pandas \
+  pillow \
   torch \
   torchvision \
   librosa \
