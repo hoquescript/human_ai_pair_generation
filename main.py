@@ -1,7 +1,11 @@
+import os
 import pandas as pd
 from transformers import AutoModelForCausalLM, AutoProcessor
 
-import os
+import sys
+from unittest.mock import MagicMock
+
+sys.modules["torchcodec"] = MagicMock()
 
 
 def clean_code_output(text):
@@ -69,7 +73,7 @@ def generate_ai_pair(processor, model, messages: list[dict[str, str]]) -> str:
 
     outputs = model.generate(
         **inputs,
-        max_new_tokens=2048,
+        max_new_tokens=1024,
         do_sample=False,
         repetition_penalty=1.0,
     )
@@ -82,30 +86,76 @@ if __name__ == "__main__":
     environment = os.environ.get("ENVIRONMENT", "dev")
     language = os.environ.get("LANGUAGE", "java")
     model_name = os.environ.get("MODEL_NAME", "Qwen/Qwen2.5-Coder-0.5B-Instruct")
+    chunk_index = int(os.environ.get("CHUNK_INDEX", 0))
+    total_chunks = int(os.environ.get("TOTAL_CHUNKS", 1))
 
     df = pd.read_csv(f"data/aidev/{language}.csv")
     sample_df = df.sample(n=5)
     dataframe = sample_df if environment == "dev" else df
     dataframe = dataframe[dataframe["code"].str.len() < 20000]
-    human_df = dataframe[dataframe["label"] == 1]
+    human_df = dataframe[dataframe["label"] == 1].copy()
+
+    # Split into chunks if needed
+    if total_chunks > 1:
+        chunk_size = len(human_df) // total_chunks
+        start = chunk_index * chunk_size
+        end = start + chunk_size if chunk_index < total_chunks - 1 else len(human_df)
+        human_df = human_df.iloc[start:end]
+        print(
+            f"Chunk {chunk_index + 1}/{total_chunks}: processing rows {start} to {end}"
+        )
+
+    # Output path
+    output_dir = "data/contrastive-aidev"
+    os.makedirs(output_dir, exist_ok=True)
+    suffix = f"_chunk{chunk_index}" if total_chunks > 1 else ""
+    output_path = f"{output_dir}/{language}{suffix}_paired.jsonl"
+
+    # Checkpointing — skip already processed rows
+    processed_indices = set()
+    if os.path.exists(output_path):
+        try:
+            existing = pd.read_json(output_path, orient="records", lines=True)
+            if "original_index" in existing.columns:
+                processed_indices = set(existing["original_index"].tolist())
+                print(
+                    f"Resuming: {len(processed_indices)} samples already done, skipping."
+                )
+        except Exception as e:
+            print(f"Warning: could not read existing output: {e}. Starting fresh.")
+
+    remaining = human_df[~human_df.index.isin(processed_indices)]
+    total = len(human_df)
+    remaining_count = len(remaining)
 
     print(
         f"Generating contrastive pairs for {language}... in mode {environment} by model {model_name}"
     )
+    print(
+        f"Total: {total} | Done: {total - remaining_count} | Remaining: {remaining_count}"
+    )
+
+    if remaining_count == 0:
+        print("All samples already processed. Exiting.")
+        sys.exit(0)
+
     processor, model = get_model(model_name)
 
-    for index, row in human_df.iterrows():
+    for i, (index, row) in enumerate(remaining.iterrows()):
         code_human = row["code"]
         prompt = get_prompt(code_human)
         code_ai = generate_ai_pair(processor, model, prompt)
-        human_df.loc[index, "contrast"] = code_ai
 
-    if not os.path.exists("data/contrastive-aidev/java_paired.jsonl"):
-        os.makedirs("data/contrastive-aidev", exist_ok=True)
+        # Write each row immediately
+        row_out = row.to_dict()
+        row_out["contrast"] = code_ai
+        row_out["original_index"] = index
 
-    human_df.to_json(
-        f"data/contrastive-aidev/{language}_paired.jsonl",
-        orient="records",
-        lines=True,
-        mode="w",
-    )
+        pd.DataFrame([row_out]).to_json(
+            output_path,
+            orient="records",
+            lines=True,
+            mode="a",
+        )
+
+        print(f"[{i + 1}/{remaining_count}] Sample {index} done.")
