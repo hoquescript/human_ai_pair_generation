@@ -1,8 +1,12 @@
 import os
 import sys
-from unittest.mock import MagicMock
 
-sys.modules["torchcodec"] = MagicMock()
+import types
+import importlib.util
+
+torchcodec_mock = types.ModuleType("torchcodec")
+torchcodec_mock.__spec__ = importlib.util.spec_from_loader("torchcodec", loader=None)
+sys.modules["torchcodec"] = torchcodec_mock
 
 # Simulate BATCH environment with just 3 samples
 os.environ["ENVIRONMENT"] = "dev"

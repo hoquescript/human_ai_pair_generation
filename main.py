@@ -3,9 +3,12 @@ import pandas as pd
 from transformers import AutoModelForCausalLM, AutoProcessor
 
 import sys
-from unittest.mock import MagicMock
+import types
+import importlib.util
 
-sys.modules["torchcodec"] = MagicMock()
+torchcodec_mock = types.ModuleType("torchcodec")
+torchcodec_mock.__spec__ = importlib.util.spec_from_loader("torchcodec", loader=None)
+sys.modules["torchcodec"] = torchcodec_mock
 
 
 def clean_code_output(text):
