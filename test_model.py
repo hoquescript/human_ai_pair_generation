@@ -1,14 +1,5 @@
 import os
-import sys
-
-import types
-import importlib.util
 import runpy
-
-
-torchcodec_mock = types.ModuleType("torchcodec")
-torchcodec_mock.__spec__ = importlib.util.spec_from_loader("torchcodec", loader=None)
-sys.modules["torchcodec"] = torchcodec_mock
 
 # Simulate BATCH environment with just 5 samples
 os.environ["ENVIRONMENT"] = "dev"

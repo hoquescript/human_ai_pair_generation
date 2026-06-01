@@ -55,6 +55,7 @@ python -m pip install --no-index --no-cache-dir \
   accelerate \
   pandas \
   torch \
+  torchcodec \
   transformers
 
 DATA_CSV="$ROOT_DIR/data/aidev/${LANGUAGE}.csv"

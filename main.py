@@ -1,14 +1,8 @@
-import sys
 import os
-import types
-import importlib.util
+import sys
 
-torchcodec_mock = types.ModuleType("torchcodec")
-torchcodec_mock.__spec__ = importlib.util.spec_from_loader("torchcodec", loader=None)
-sys.modules["torchcodec"] = torchcodec_mock
-
-import pandas as pd  # noqa: E402
-from transformers import AutoModelForCausalLM, AutoTokenizer  # noqa: E402
+import pandas as pd
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
 def clean_code_output(text):
