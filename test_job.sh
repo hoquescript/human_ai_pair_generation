@@ -32,7 +32,6 @@ python -m pip install --no-index --no-cache-dir \
   accelerate \
   pandas \
   torch \
-  torchcodec \
   transformers
 
 echo "Packages installed OK"

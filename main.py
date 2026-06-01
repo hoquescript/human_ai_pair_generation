@@ -1,8 +1,22 @@
 import os
 import sys
+import importlib.metadata
 
-import pandas as pd
-from transformers import AutoModelForCausalLM, AutoTokenizer
+# torchcodec is not in CC's wheelhouse; patch the metadata probe that
+# transformers/audio_utils.py runs at import time so it doesn't raise.
+_orig_version = importlib.metadata.version
+
+
+def _patched_version(name: str) -> str:
+    if name == "torchcodec":
+        return "0.0.0"
+    return _orig_version(name)
+
+
+importlib.metadata.version = _patched_version
+
+import pandas as pd  # noqa: E402
+from transformers import AutoModelForCausalLM, AutoTokenizer  # noqa: E402
 
 
 def clean_code_output(text):
