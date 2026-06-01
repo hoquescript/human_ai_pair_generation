@@ -10,7 +10,7 @@ torchcodec_mock = types.ModuleType("torchcodec")
 torchcodec_mock.__spec__ = importlib.util.spec_from_loader("torchcodec", loader=None)
 sys.modules["torchcodec"] = torchcodec_mock
 
-# Simulate BATCH environment with just 3 samples
+# Simulate BATCH environment with just 5 samples
 os.environ["ENVIRONMENT"] = "dev"
 os.environ["LANGUAGE"] = "java"
 os.environ["MODEL_NAME"] = "Qwen/Qwen3-Coder-30B-A3B-Instruct"
