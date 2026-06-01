@@ -8,7 +8,7 @@ torchcodec_mock.__spec__ = importlib.util.spec_from_loader("torchcodec", loader=
 sys.modules["torchcodec"] = torchcodec_mock
 
 import pandas as pd  # noqa: E402
-from transformers import AutoModelForCausalLM, AutoProcessor  # noqa: E402
+from transformers import AutoModelForCausalLM, AutoTokenizer  # noqa: E402
 
 
 def clean_code_output(text):
@@ -24,13 +24,13 @@ def clean_code_output(text):
 
 
 def get_model(model_name: str):
-    processor = AutoProcessor.from_pretrained(model_name)
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
-        dtype="auto",
+        torch_dtype="auto",
         device_map="auto",
     )
-    return processor, model
+    return tokenizer, model
 
 
 def get_prompt(code: str) -> list[dict[str, str]]:
@@ -64,23 +64,25 @@ def get_prompt(code: str) -> list[dict[str, str]]:
     ]
 
 
-def generate_ai_pair(processor, model, messages: list[dict[str, str]]) -> str:
-    text = processor.apply_chat_template(
+def generate_ai_pair(tokenizer, model, messages: list[dict[str, str]]) -> str:
+    text = tokenizer.apply_chat_template(
         messages,
         tokenize=False,
         add_generation_prompt=True,
-        enable_thinking=False,
     )
-    inputs = processor(text=text, return_tensors="pt").to(model.device)
+    inputs = tokenizer([text], return_tensors="pt").to(model.device)
     input_len = inputs["input_ids"].shape[-1]
 
     outputs = model.generate(
         **inputs,
-        max_new_tokens=1024,
-        do_sample=False,
-        repetition_penalty=1.0,
+        max_new_tokens=65536,
+        do_sample=True,
+        temperature=0.7,
+        top_p=0.8,
+        top_k=20,
+        repetition_penalty=1.05,
     )
-    response = processor.decode(outputs[0][input_len:], skip_special_tokens=True)
+    response = tokenizer.decode(outputs[0][input_len:], skip_special_tokens=True)
 
     return clean_code_output(response)
 
@@ -88,7 +90,7 @@ def generate_ai_pair(processor, model, messages: list[dict[str, str]]) -> str:
 if __name__ == "__main__":
     environment = os.environ.get("ENVIRONMENT", "dev")
     language = os.environ.get("LANGUAGE", "java")
-    model_name = os.environ.get("MODEL_NAME", "Qwen/Qwen2.5-Coder-0.5B-Instruct")
+    model_name = os.environ.get("MODEL_NAME", "Qwen/Qwen3-Coder-30B-A3B-Instruct")
     chunk_index = int(os.environ.get("CHUNK_INDEX", 0))
     total_chunks = int(os.environ.get("TOTAL_CHUNKS", 1))
 
@@ -142,12 +144,12 @@ if __name__ == "__main__":
         print("All samples already processed. Exiting.")
         sys.exit(0)
 
-    processor, model = get_model(model_name)
+    tokenizer, model = get_model(model_name)
 
     for i, (index, row) in enumerate(remaining.iterrows()):
         code_human = row["code"]
         prompt = get_prompt(code_human)
-        code_ai = generate_ai_pair(processor, model, prompt)
+        code_ai = generate_ai_pair(tokenizer, model, prompt)
 
         # Write each row immediately
         row_out = row.to_dict()

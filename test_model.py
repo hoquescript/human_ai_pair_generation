@@ -13,7 +13,7 @@ sys.modules["torchcodec"] = torchcodec_mock
 # Simulate BATCH environment with just 3 samples
 os.environ["ENVIRONMENT"] = "dev"
 os.environ["LANGUAGE"] = "java"
-os.environ["MODEL_NAME"] = "google/gemma-4-26B-A4B-it"
+os.environ["MODEL_NAME"] = "Qwen/Qwen3-Coder-30B-A3B-Instruct"
 os.environ["CHUNK_INDEX"] = "0"
 os.environ["TOTAL_CHUNKS"] = "1"
 

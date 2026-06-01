@@ -1,10 +1,11 @@
 #!/bin/bash
-#SBATCH --job-name=test-gemma
+#SBATCH --job-name=test-qwen3-coder
+#SBATCH --partition=gpubase_bygpu_b5
 #SBATCH --gpus=h100:1
 #SBATCH --time=0:30:00
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=64G
-#SBATCH --output=logs/test-gemma-%j.log
+#SBATCH --output=logs/test-qwen3-%j.log
 
 set -euo pipefail
 
@@ -25,10 +26,7 @@ python -m pip install --no-index --upgrade pip
 python -m pip install --no-index --no-cache-dir \
   accelerate \
   pandas \
-  pillow \
   torch \
-  torchvision \
-  librosa \
   transformers
 
 echo "Packages installed OK"
